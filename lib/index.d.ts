@@ -39,6 +39,7 @@ declare class CacheGator {
         mergeFields?: string[];
         ignoreFields?: string[];
     }): Promise<any[]>;
+    private clearMemoryCache;
 }
 export default CacheGator;
 //# sourceMappingURL=index.d.ts.map

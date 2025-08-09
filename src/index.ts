@@ -5,11 +5,12 @@ import {
   createWriteStream,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
+  unlinkSync,
   writeFileSync,
 } from "fs";
 import readline from "readline";
-import type Stream from "stream";
 
 class CacheGator {
   private cacheType: "redis" | "memory";
@@ -24,7 +25,7 @@ class CacheGator {
   private log: Function = console.log.bind(console);
   private error: Function = console.error.bind(console);
   private redisConnectPromise: Promise<void> | null = null;
-  private cacheExpiry: number;
+  private cacheExpiry: number; // ony use in redis, for in-memory cache, automatically flushed at the end
   private forceCacheRegenerate: boolean = false;
   private tmpDir: string;
   constructor({
@@ -423,7 +424,27 @@ class CacheGator {
         ignoreFields,
       });
     }
+    if (this.cacheType === "memory") {
+      this.clearMemoryCache();
+    }
     return mergeFields?.length ? Array.from(combined.values()) : results;
+  }
+
+  private clearMemoryCache() {
+    const files = readdirSync(this.tmpDir);
+    const filters = files.filter((f) => /\.remove.tmp$/.test(f));
+    for (const filter of filters) {
+      let file = filter.slice(0, -11);
+      const files = [
+        `${this.tmpDir}/${file}.tmp`,
+        `${this.tmpDir}/${file}.remove.tmp`,
+      ];
+      for (const file of files) {
+        if (existsSync(file)) {
+          unlinkSync(file);
+        }
+      }
+    }
   }
 }
 
