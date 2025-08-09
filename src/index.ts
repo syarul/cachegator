@@ -11,6 +11,7 @@ import {
   writeFileSync,
 } from "fs";
 import readline from "readline";
+import crypto from "crypto";
 
 class CacheGator {
   private cacheType: "redis" | "memory";
@@ -138,6 +139,13 @@ class CacheGator {
     }
   }
 
+  hashObject(obj: Record<string, any>): string {
+    return crypto
+      .createHash("sha256")
+      .update(JSON.stringify(obj))
+      .digest("hex");
+  }
+
   setSplitter(splitter: any): void {
     this.splitter = splitter;
     this.log("splitter function set.");
@@ -228,12 +236,18 @@ class CacheGator {
       // skip query if cache exist
       if (cacheEntry?.length) {
         this.log(
-          `pre-loading ${this.colors.GREEN}${type}${this.colors.RESET} chunk ${this.colors.YELLOW}${step + 1}/${batches.length}${this.colors.RESET}...`,
+          `pre-loading ${this.colors.GREEN}${type}${this.colors.RESET} chunk ${
+            this.colors.YELLOW
+          }${step + 1}/${batches.length}${this.colors.RESET}...`,
         );
         step++;
         continue;
       }
-      this.log(`pre-processing ${this.colors.GREEN}${type}${this.colors.RESET} chunk ${this.colors.YELLOW}${step + 1}/${batches.length}${this.colors.RESET}...`);
+      this.log(
+        `pre-processing ${this.colors.GREEN}${type}${this.colors.RESET} chunk ${
+          this.colors.YELLOW
+        }${step + 1}/${batches.length}${this.colors.RESET}...`,
+      );
       const cursor = this.batchAggregator(batchQuery);
       let count = 0;
       let resolver: any;

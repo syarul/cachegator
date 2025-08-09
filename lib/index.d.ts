@@ -21,6 +21,7 @@ declare class CacheGator {
     forceCacheRegenerate, }: Options);
     private lazyLoadRedis;
     private closeRedisClient;
+    hashObject(obj: Record<string, any>): string;
     setSplitter(splitter: any): void;
     split(config: any): void;
     private batchAggregator;

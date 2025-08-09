@@ -34,12 +34,16 @@
 
     // Recommended Options
     "strict": true,
-    "jsx": "react-jsx",
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
   },
-  "exclude": ["node_modules", "lib", "test", "**/*.test.ts"]
+  "exclude": ["node_modules", "lib", "test"],
+  // "exclude": ["node_modules", "lib", "test", "**/*.test.ts"],
+  // "ts-node": {
+  //   "esm": true,
+  //   "experimentalSpecifierResolution": "node"
+  // }
 }

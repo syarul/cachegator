@@ -1,0 +1,58 @@
+# This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
+# For more information see: https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
+
+name: requrse-main
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 21
+          cache: npm
+      - run: npm ci
+
+      - name: Set up dotenv
+        run: |
+          echo "DB=mongodb://localhost:27017/test" >> .env
+          # echo "REDIS_KEY=${{ secrets.REDIS_KEY }}" >> .env
+          # echo "REDIS_URL=${{ secrets.REDIS_URL }}" >> .env
+
+      - name: Test
+        run: |
+          npx tsx test/generateMockData.ts
+          npm run test
+      
+      # - name: Coveralls
+      #   uses: coverallsapp/github-action@master
+
+  # publish-gpr:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #     packages: write
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/setup-node@v3
+  #       with:
+  #         node-version: 18
+  #         registry-url: https://npm.pkg.github.com/
+  #     - run: npm ci
+  #     - run: npm publish --registry=https://npm.pkg.github.com/
+  #       env:
+  #         NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}

@@ -1,12 +1,12 @@
 {
   "type": "module",
   "name": "cachegator",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "a split-able caching aggregation handler",
   "main": "lib/index.js",
   "scripts": {
-    "test": "npx ts-node test/index.ts",
-    "lint": "prettier --write **/*.ts",
+    "test": "npx tsx test/index.test.ts",
+    "lint": "prettier --write **/*.ts  --ignore-path ''",
     "build": "tsc -p tsconfig.json",
     "start": "node lib/index.js",
     "dev": "ts-node src/index.ts",
@@ -36,7 +36,6 @@
     "@types/node": "^24.2.0",
     "dotenv": "^17.2.1",
     "mongoose": "^8.17.1",
-    "ts-node": "^10.9.2",
     "tsx": "^4.20.3",
     "typescript": "^5.9.2"
   },
