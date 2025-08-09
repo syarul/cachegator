@@ -24,10 +24,17 @@ class CacheGator {
   private debug: boolean;
   private log: Function = console.log.bind(console);
   private error: Function = console.error.bind(console);
+  private warn: Function = console.warn.bind(console);
   private redisConnectPromise: Promise<void> | null = null;
   private cacheExpiry: number; // ony use in redis, for in-memory cache, automatically flushed at the end
   private forceCacheRegenerate: boolean = false;
   private tmpDir: string;
+  private colors: {
+    GREEN: string;
+    RESET: string;
+    RED: string;
+    YELLOW: string;
+  };
   constructor({
     useRedis = false,
     redisOptions = {
@@ -67,18 +74,23 @@ class CacheGator {
       });
     }
     if (!this.debug) {
-      this.log = () => {}; // Disable logging if debug is false
+      this.log = () => {}; // disable logging if debug is false
     }
+    this.colors = {
+      GREEN: "\x1b[32m",
+      RESET: "\x1b[0m",
+      RED: "\x1b[31m",
+      YELLOW: "\x1b[33m",
+    };
   }
 
   private async lazyLoadRedis(): Promise<void> {
-    console.trace("lazyLoadRedis called");
-    // Already connected → do nothing
+    // already connected → do nothing
     if (this.client?.isOpen) {
       return;
     }
 
-    // Connection already in progress → reuse the same promise
+    // connection already in progress → reuse the same promise
     if (this.redisConnectPromise) {
       return this.redisConnectPromise;
     }
@@ -86,12 +98,12 @@ class CacheGator {
     this.log("connecting to redis...");
     const { createClient } = await import("redis");
 
-    // Create only one client instance
+    // create only one client instance
     if (!this.client) {
       this.client = createClient(this.redisOptions);
     }
 
-    // Create the connection promise once
+    // create the connection promise once
     this.redisConnectPromise = new Promise<void>((resolve, reject) => {
       this.client!.once("ready", () => {
         this.log("redis connected");
@@ -105,10 +117,9 @@ class CacheGator {
       });
     });
 
-    // Kick off the connection
+    // kick off the connection
     this.client.connect().catch((err: Error) => {
       this.redisConnectPromise = null; // allow retry if connect() fails
-      // this.error("Redis connection error:", err);
     });
 
     return this.redisConnectPromise;
@@ -216,11 +227,13 @@ class CacheGator {
       }
       // skip query if cache exist
       if (cacheEntry?.length) {
-        this.log(`pre-loading ${type} chunk ${step + 1}/${batches.length}...`);
+        this.log(
+          `pre-loading ${this.colors.GREEN}${type}${this.colors.RESET} chunk ${this.colors.YELLOW}${step + 1}/${batches.length}${this.colors.RESET}...`,
+        );
         step++;
         continue;
       }
-      this.log(`pre-processing ${type} chunk ${step + 1}/${batches.length}...`);
+      this.log(`pre-processing ${this.colors.GREEN}${type}${this.colors.RESET} chunk ${this.colors.YELLOW}${step + 1}/${batches.length}${this.colors.RESET}...`);
       const cursor = this.batchAggregator(batchQuery);
       let count = 0;
       let resolver: any;
@@ -273,10 +286,10 @@ class CacheGator {
     return keys;
   }
 
-  async processChunk({
+  private async processChunk({
     query,
     linesBuffer,
-    chunkCount,
+    batchCount,
     combined,
     results,
     mergeFields = [],
@@ -284,14 +297,16 @@ class CacheGator {
   }: {
     query: any[];
     linesBuffer: any[];
-    chunkCount: number;
+    batchCount: number;
     combined: Map<string, any>;
     results: any[];
     mergeFields: string[];
     ignoreFields: string[];
   }) {
-    console.log(
-      `processing chunk ${chunkCount} with ${linesBuffer.length} lines.`,
+    this.log(
+      `processing batch ${this.colors.YELLOW}%d${this.colors.RESET} :: ${this.colors.YELLOW}%d${this.colors.RESET} records processed...`,
+      batchCount,
+      batchCount * this.batchReadSize,
     );
     const $literal = [];
     for (const line of linesBuffer) {
@@ -339,8 +354,9 @@ class CacheGator {
         results = results.concat(chunkResult);
       }
     } else {
-      console.warn(
-        `unexpected result processing chunk ${chunkCount} with ${linesBuffer.length} lines.`,
+      this.warn(
+        `unexpected result processing batch ${this.colors.RED}%d${this.colors.RESET}`,
+        batchCount,
       );
     }
   }
@@ -364,7 +380,7 @@ class CacheGator {
 
     let globalLineCount = 0;
     let linesBuffer: any[] = [];
-    let chunkCount = 0;
+    let batchCount = 0;
     let start = "0";
     for (const key of keys) {
       const id = `${this.keyPrefix}:${key}`;
@@ -397,11 +413,11 @@ class CacheGator {
         linesBuffer.push(message.json);
         globalLineCount++;
         if (linesBuffer.length === this.batchReadSize) {
-          chunkCount++;
+          batchCount++;
           await this.processChunk({
             query,
             linesBuffer,
-            chunkCount,
+            batchCount,
             combined,
             results,
             mergeFields,
@@ -413,11 +429,11 @@ class CacheGator {
       this.cacheType === "redis" && this.closeRedisClient();
     }
     if (linesBuffer.length > 0) {
-      chunkCount++;
+      batchCount++;
       await this.processChunk({
         query,
         linesBuffer,
-        chunkCount,
+        batchCount,
         combined,
         results,
         mergeFields,
@@ -427,6 +443,10 @@ class CacheGator {
     if (this.cacheType === "memory") {
       this.clearMemoryCache();
     }
+    this.log(
+      `${this.colors.GREEN}%d${this.colors.RESET} combined entries processed...`,
+      combined.size,
+    );
     return mergeFields?.length ? Array.from(combined.values()) : results;
   }
 

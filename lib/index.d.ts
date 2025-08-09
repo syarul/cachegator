@@ -11,10 +11,12 @@ declare class CacheGator {
     private debug;
     private log;
     private error;
+    private warn;
     private redisConnectPromise;
     private cacheExpiry;
     private forceCacheRegenerate;
     private tmpDir;
+    private colors;
     constructor({ useRedis, redisOptions, tmpDir, batchReadSize, model, keyPrefix, debug, cacheExpiry, // default cache expiry in seconds
     forceCacheRegenerate, }: Options);
     private lazyLoadRedis;
@@ -24,15 +26,7 @@ declare class CacheGator {
     private batchAggregator;
     literalQuery($literal: any[], query?: any[]): Promise<any>;
     generateCache(): Promise<string[]>;
-    processChunk({ query, linesBuffer, chunkCount, combined, results, mergeFields, ignoreFields, }: {
-        query: any[];
-        linesBuffer: any[];
-        chunkCount: number;
-        combined: Map<string, any>;
-        results: any[];
-        mergeFields: string[];
-        ignoreFields: string[];
-    }): Promise<void>;
+    private processChunk;
     aggregateCache({ keys, query, mergeFields, ignoreFields, }: {
         keys: string[];
         query: any[];
