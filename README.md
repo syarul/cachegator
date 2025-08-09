@@ -1,2 +1,2 @@
 # cachegator
-a splitable caching aggregation handler
+a split-able caching aggregation handler
