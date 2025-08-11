@@ -1,3 +1,5 @@
 tmp
 node_modules
 .env
+test/model.ts
+test/tent.test.ts

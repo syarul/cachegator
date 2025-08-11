@@ -2,7 +2,7 @@
 a split-able streaming aggregation wrapper around mongoose/mongodb cursor
 
 [![NPM Version](https://img.shields.io/npm/v/cachegator.svg)](https://www.npmjs.com/package/cachegator)
-[![requrse-main](https://github.com/syarul/cachegator/actions/workflows/main-ci.yml/badge.svg)](https://github.com/syarul/cachegator/actions/workflows/main-ci.yml)
+[![cachegator](https://github.com/syarul/cachegator/actions/workflows/main-ci.yml/badge.svg)](https://github.com/syarul/cachegator/actions/workflows/main-ci.yml)
 
 # usage (TBD)
 
