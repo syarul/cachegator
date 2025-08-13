@@ -37,23 +37,25 @@ class CacheGator {
     YELLOW: string;
   };
   private maxBytes: number; // maxBytes limit for $facet $literal mongodb
-  constructor({
-    useRedis = false,
-    redisOptions = {
-      socket: {
-        host: "127.0.0.1",
-        port: 6379,
+  constructor(
+    {
+      useRedis = false,
+      redisOptions = {
+        socket: {
+          host: "127.0.0.1",
+          port: 6379,
+        },
       },
-    },
-    tmpDir = "./tmp",
-    batchReadSize = 10000,
-    model,
-    keyPrefix = "CG",
-    debug = false,
-    cacheExpiry = 3600, // default cache expiry in seconds
-    forceCacheRegenerate = false, // whether to force regenerate cache
-    maxBytes = 16792600, // actual max 17825792 but BSONObj require 16793600(16MB) limit size,
-  }: Options) {
+      tmpDir = "./tmp",
+      batchReadSize = 10000,
+      model,
+      keyPrefix = "CG",
+      debug = false,
+      cacheExpiry = 3600, // default cache expiry in seconds
+      forceCacheRegenerate = false, // whether to force regenerate cache
+      maxBytes = 16792600, // actual max 17825792 but BSONObj require 16793600(16MB) limit size,
+    } = {} as Options,
+  ) {
     this.cacheType = useRedis ? "redis" : "memory";
     this.redisOptions = redisOptions;
     this.Model = model; // placeholder for the model, to be set later
@@ -303,6 +305,74 @@ class CacheGator {
     return keys;
   }
 
+  private async loadChunk({ linesBuffer, query, batchCount, bytesCount }: any) {
+    const cacheKey = this.hashObject({
+      query,
+      batchCount,
+      bytesCount,
+    });
+    let chunkCache;
+    if (this.cacheType === "memory") {
+      const memCache = `${this.tmpDir}/${this.keyPrefix}_${cacheKey}.layer.tmp`;
+      if (existsSync(memCache)) {
+        chunkCache = readFileSync(memCache, "utf8");
+      }
+    } else {
+      chunkCache = await this.client.hGet(
+        `${this.keyPrefix}_${cacheKey}`,
+        "LAYER",
+      );
+    }
+    if (chunkCache?.length) {
+      this.log(
+        `loading batch ${this.colors.YELLOW}%d${this.colors.RESET} :: ${this.colors.YELLOW}%d${this.colors.RESET} bytes processed (${this.colors.YELLOW}%d${this.colors.RESET} records)...`,
+        batchCount,
+        bytesCount,
+        linesBuffer.length,
+      );
+      return JSON.parse(chunkCache);
+    }
+    this.log(
+      `processing batch ${this.colors.YELLOW}%d${this.colors.RESET} :: ${this.colors.YELLOW}%d${this.colors.RESET} bytes processed (${this.colors.YELLOW}%d${this.colors.RESET} records)...`,
+      batchCount,
+      bytesCount,
+      linesBuffer.length,
+    );
+    let chunkResult = [];
+    const $literal = [];
+    for (const line of linesBuffer) {
+      const data = JSON.parse(line);
+      if (Object.keys(data || {}).length) {
+        if (data.timestamp) {
+          data.timestamp = new Date(data.timestamp);
+        }
+        $literal.push(data);
+      }
+    }
+    try {
+      chunkResult = await this.literalQuery($literal, query);
+    } catch (e) {
+      console.error(e);
+    }
+    if (this.cacheType === "memory") {
+      writeFileSync(
+        `${this.tmpDir}/${this.keyPrefix}_${cacheKey}.layer.tmp`,
+        JSON.stringify(chunkResult),
+      ); // persistent unless write a setTimeout if not use redis instead
+    } else {
+      await this.client.hSet(
+        `${this.keyPrefix}_${cacheKey}`,
+        "LAYER",
+        JSON.stringify(chunkResult),
+      );
+      await this.client.expire(
+        `${this.keyPrefix}_${cacheKey}`,
+        this.cacheExpiry,
+      );
+    }
+    return chunkResult;
+  }
+
   private async processChunk({
     query,
     linesBuffer,
@@ -322,28 +392,12 @@ class CacheGator {
     mergeFields: string[];
     ignoreFields: string[];
   }) {
-    this.log(
-      `processing batch ${this.colors.YELLOW}%d${this.colors.RESET} :: ${this.colors.YELLOW}%d${this.colors.RESET} bytes processed (${this.colors.YELLOW}%d${this.colors.RESET} records)...`,
+    const chunkResult = await this.loadChunk({
+      linesBuffer,
+      query,
       batchCount,
       bytesCount,
-      linesBuffer.length
-    );
-    const $literal = [];
-    for (const line of linesBuffer) {
-      const data = JSON.parse(line);
-      if (Object.keys(data || {}).length) {
-        if (data.timestamp) {
-          data.timestamp = new Date(data.timestamp);
-        }
-        $literal.push(data);
-      }
-    }
-    let chunkResult = [];
-    try {
-      chunkResult = await this.literalQuery($literal, query);
-    } catch (e) {
-      console.error(e);
-    }
+    });
     if (Array.isArray(chunkResult)) {
       if (mergeFields.length) {
         for (const chunk of chunkResult) {
@@ -432,9 +486,12 @@ class CacheGator {
 
       for await (const { message } of entries) {
         linesBuffer.push(message.json);
-        bytesCount += Buffer.byteLength(JSON.stringify(message.json), 'utf8');
+        bytesCount += Buffer.byteLength(JSON.stringify(message.json), "utf8");
         globalLineCount++;
-        if (linesBuffer.length === this.batchReadSize || bytesCount > this.maxBytes) {
+        if (
+          linesBuffer.length === this.batchReadSize ||
+          bytesCount > this.maxBytes
+        ) {
           batchCount++;
           await this.processChunk({
             query,
@@ -450,8 +507,9 @@ class CacheGator {
           bytesCount = 0; // reset buffer count
         }
       }
-      this.cacheType === "redis" && this.closeRedisClient();
+      // this.cacheType === "redis" && this.closeRedisClient();
     }
+
     if (linesBuffer.length > 0) {
       batchCount++;
       await this.processChunk({
@@ -467,6 +525,8 @@ class CacheGator {
     }
     if (this.cacheType === "memory") {
       this.clearMemoryCache();
+    } else {
+      this.cacheType === "redis" && this.closeRedisClient();
     }
     this.log(
       `${this.colors.GREEN}%d${this.colors.RESET} combined entries processed...`,
@@ -494,3 +554,4 @@ class CacheGator {
 }
 
 export default CacheGator;
+export type { CacheGator };

@@ -20,7 +20,7 @@ declare class CacheGator {
     private maxBytes;
     constructor({ useRedis, redisOptions, tmpDir, batchReadSize, model, keyPrefix, debug, cacheExpiry, // default cache expiry in seconds
     forceCacheRegenerate, // whether to force regenerate cache
-    maxBytes, }: Options);
+    maxBytes, }?: Options);
     private lazyLoadRedis;
     private closeRedisClient;
     hashObject(obj: Record<string, any>): string;
@@ -29,6 +29,7 @@ declare class CacheGator {
     private batchAggregator;
     literalQuery($literal: any[], query?: any[]): Promise<any>;
     generateCache(): Promise<string[]>;
+    private loadChunk;
     private processChunk;
     aggregateCache({ keys, query, mergeFields, ignoreFields, }: {
         keys: string[];
@@ -39,4 +40,5 @@ declare class CacheGator {
     private clearMemoryCache;
 }
 export default CacheGator;
+export type { CacheGator };
 //# sourceMappingURL=index.d.ts.map

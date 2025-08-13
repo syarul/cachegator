@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
 import "dotenv/config";
 import "./sampleModel";
-import CacheGator from "../src/index";
+import Ctor, { CacheGator } from "../src";
 const Model = mongoose.model("Model");
 
-const ctor = new CacheGator({
+const ctor: CacheGator = new Ctor({
   useRedis: false,
   model: Model,
   debug: true,
