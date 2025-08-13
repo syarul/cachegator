@@ -10,6 +10,7 @@ export type Options = {
   debug?: boolean; // debugging mode
   cacheExpiry?: number; // cache expiry in seconds, default is 3600 seconds (1 hour)
   forceCacheRegenerate?: boolean; // whether to force regenerate cache
+  maxBytes?: number;
 };
 
 // BatchObject required parameters from calling the splitter function

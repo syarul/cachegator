@@ -36,6 +36,7 @@ class CacheGator {
     RED: string;
     YELLOW: string;
   };
+  private maxBytes: number; // maxBytes limit for $facet $literal mongodb
   constructor({
     useRedis = false,
     redisOptions = {
@@ -51,6 +52,7 @@ class CacheGator {
     debug = false,
     cacheExpiry = 3600, // default cache expiry in seconds
     forceCacheRegenerate = false, // whether to force regenerate cache
+    maxBytes = 16792600, // actual max 17825792 but BSONObj require 16793600(16MB) limit size,
   }: Options) {
     this.cacheType = useRedis ? "redis" : "memory";
     this.redisOptions = redisOptions;
@@ -61,6 +63,7 @@ class CacheGator {
     this.cacheExpiry = cacheExpiry;
     this.forceCacheRegenerate = forceCacheRegenerate;
     this.tmpDir = tmpDir;
+    this.maxBytes = maxBytes;
     if (this.cacheType === "memory") {
       if (!existsSync(tmpDir)) {
         try {
@@ -304,6 +307,7 @@ class CacheGator {
     query,
     linesBuffer,
     batchCount,
+    bytesCount,
     combined,
     results,
     mergeFields = [],
@@ -312,15 +316,17 @@ class CacheGator {
     query: any[];
     linesBuffer: any[];
     batchCount: number;
+    bytesCount: number;
     combined: Map<string, any>;
     results: any[];
     mergeFields: string[];
     ignoreFields: string[];
   }) {
     this.log(
-      `processing batch ${this.colors.YELLOW}%d${this.colors.RESET} :: ${this.colors.YELLOW}%d${this.colors.RESET} records processed...`,
+      `processing batch ${this.colors.YELLOW}%d${this.colors.RESET} :: ${this.colors.YELLOW}%d${this.colors.RESET} bytes processed (${this.colors.YELLOW}%d${this.colors.RESET} records)...`,
       batchCount,
-      batchCount * this.batchReadSize,
+      bytesCount,
+      linesBuffer.length
     );
     const $literal = [];
     for (const line of linesBuffer) {
@@ -396,6 +402,7 @@ class CacheGator {
     let linesBuffer: any[] = [];
     let batchCount = 0;
     let start = "0";
+    let bytesCount = 0;
     for (const key of keys) {
       const id = `${this.keyPrefix}:${key}`;
       let entries: any[] = [];
@@ -425,19 +432,22 @@ class CacheGator {
 
       for await (const { message } of entries) {
         linesBuffer.push(message.json);
+        bytesCount += Buffer.byteLength(JSON.stringify(message.json), 'utf8');
         globalLineCount++;
-        if (linesBuffer.length === this.batchReadSize) {
+        if (linesBuffer.length === this.batchReadSize || bytesCount > this.maxBytes) {
           batchCount++;
           await this.processChunk({
             query,
             linesBuffer,
             batchCount,
+            bytesCount,
             combined,
             results,
             mergeFields,
             ignoreFields,
           });
           linesBuffer = [];
+          bytesCount = 0; // reset buffer count
         }
       }
       this.cacheType === "redis" && this.closeRedisClient();
@@ -448,6 +458,7 @@ class CacheGator {
         query,
         linesBuffer,
         batchCount,
+        bytesCount,
         combined,
         results,
         mergeFields,
