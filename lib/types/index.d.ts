@@ -9,6 +9,7 @@ export type Options = {
     debug?: boolean;
     cacheExpiry?: number;
     forceCacheRegenerate?: boolean;
+    maxBytes?: number;
 };
 export type BatchObject = {
     key: string;

@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "cachegator",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "a split-able caching aggregation handler",
   "main": "lib/index.js",
   "scripts": {

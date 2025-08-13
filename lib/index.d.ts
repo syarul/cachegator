@@ -17,8 +17,10 @@ declare class CacheGator {
     private forceCacheRegenerate;
     private tmpDir;
     private colors;
+    private maxBytes;
     constructor({ useRedis, redisOptions, tmpDir, batchReadSize, model, keyPrefix, debug, cacheExpiry, // default cache expiry in seconds
-    forceCacheRegenerate, }: Options);
+    forceCacheRegenerate, // whether to force regenerate cache
+    maxBytes, }: Options);
     private lazyLoadRedis;
     private closeRedisClient;
     hashObject(obj: Record<string, any>): string;
