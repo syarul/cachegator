@@ -11,6 +11,10 @@ export type Options = {
   cacheExpiry?: number; // cache expiry in seconds, default is 3600 seconds (1 hour)
   forceCacheRegenerate?: boolean; // whether to force regenerate cache
   maxBytes?: number;
+  // persistentCaching default false, if set to true you need to call ctor.clearMemoryCache()
+  // manually, if you want to do extra custom processing before clearing the cache
+  // or if you wish to keep it indefinitely
+  persistentCaching?: boolean;
 };
 
 // BatchObject required parameters from calling the splitter function

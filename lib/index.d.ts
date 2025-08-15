@@ -1,6 +1,7 @@
 import type { Options } from "./types/index.js";
 declare class CacheGator {
     private cacheType;
+    private persistentCaching;
     private splitter?;
     private client;
     private redisOptions;
@@ -20,7 +21,8 @@ declare class CacheGator {
     private maxBytes;
     constructor({ useRedis, redisOptions, tmpDir, batchReadSize, model, keyPrefix, debug, cacheExpiry, // default cache expiry in seconds
     forceCacheRegenerate, // whether to force regenerate cache
-    maxBytes, }?: Options);
+    maxBytes, // actual max 17825792 but BSONObj require 16793600(16MB) limit size,
+    persistentCaching, }?: Options);
     private lazyLoadRedis;
     private closeRedisClient;
     hashObject(obj: Record<string, any>): string;
@@ -37,7 +39,7 @@ declare class CacheGator {
         mergeFields?: string[];
         ignoreFields?: string[];
     }): Promise<any[]>;
-    private clearMemoryCache;
+    clearMemoryCache(): void;
     private clearLayerMemoryCache;
 }
 export default CacheGator;

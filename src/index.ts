@@ -16,6 +16,7 @@ import crypto from "crypto";
 
 class CacheGator {
   private cacheType: "redis" | "memory";
+  private persistentCaching: boolean;
   private splitter?: (config: any) => BatchObject[];
   private client: ReturnType<typeof import("redis").createClient> | any;
   private redisOptions: RedisClientOptions;
@@ -55,9 +56,11 @@ class CacheGator {
       cacheExpiry = 3600, // default cache expiry in seconds
       forceCacheRegenerate = false, // whether to force regenerate cache
       maxBytes = 16792600, // actual max 17825792 but BSONObj require 16793600(16MB) limit size,
+      persistentCaching = false,
     } = {} as Options,
   ) {
     this.cacheType = useRedis ? "redis" : "memory";
+    this.persistentCaching = persistentCaching;
     this.redisOptions = redisOptions;
     this.Model = model; // placeholder for the model, to be set later
     this.batchReadSize = batchReadSize;
@@ -527,7 +530,7 @@ class CacheGator {
         ignoreFields,
       });
     }
-    if (this.cacheType === "memory") {
+    if (this.cacheType === "memory" && !this.persistentCaching) {
       this.clearMemoryCache();
     } else {
       this.cacheType === "redis" && this.closeRedisClient();
@@ -539,7 +542,7 @@ class CacheGator {
     return mergeFields?.length ? Array.from(combined.values()) : results;
   }
 
-  private clearMemoryCache() {
+  clearMemoryCache() {
     const files = readdirSync(this.tmpDir);
     const filters = files.filter((f) => /\.remove.tmp$/.test(f));
     for (const filter of filters) {
