@@ -38,6 +38,7 @@ declare class CacheGator {
         ignoreFields?: string[];
     }): Promise<any[]>;
     private clearMemoryCache;
+    private clearLayerMemoryCache;
 }
 export default CacheGator;
 export type { CacheGator };

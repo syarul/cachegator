@@ -7,6 +7,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  statSync,
   unlinkSync,
   writeFileSync,
 } from "fs";
@@ -358,7 +359,7 @@ class CacheGator {
       writeFileSync(
         `${this.tmpDir}/${this.keyPrefix}_${cacheKey}.layer.tmp`,
         JSON.stringify(chunkResult),
-      ); // persistent unless write a setTimeout if not use redis instead
+      ); // persistent, expired is trigger on next trigger
     } else {
       await this.client.hSet(
         `${this.keyPrefix}_${cacheKey}`,
@@ -448,6 +449,9 @@ class CacheGator {
   }): Promise<any[]> {
     if (this.cacheType === "redis") {
       await this.lazyLoadRedis();
+    } else {
+      // clear layer cache first
+      this.clearLayerMemoryCache();
     }
     const combined = new Map<string, any>();
     let results: any[] = [];
@@ -539,17 +543,48 @@ class CacheGator {
     const files = readdirSync(this.tmpDir);
     const filters = files.filter((f) => /\.remove.tmp$/.test(f));
     for (const filter of filters) {
-      let file = filter.slice(0, -11);
-      const files = [
-        `${this.tmpDir}/${file}.tmp`,
-        `${this.tmpDir}/${file}.remove.tmp`,
-      ];
-      for (const file of files) {
-        if (existsSync(file)) {
-          unlinkSync(file);
+      try {
+        let file = filter.slice(0, -11);
+        const files = [
+          `${this.tmpDir}/${file}.tmp`,
+          `${this.tmpDir}/${file}.remove.tmp`,
+        ];
+        for (const file of files) {
+          if (existsSync(file)) {
+            unlinkSync(file);
+          }
         }
+      } catch (err: any) {
+        console.error(err.message);
       }
     }
+  }
+
+  private clearLayerMemoryCache() {
+    const files = readdirSync(this.tmpDir);
+    // LAYER clear cache base on fs.stat
+    const layerCaches = files.filter((f) => /\.layer.tmp$/.test(f));
+    const now = Date.now();
+    let count = 0;
+    for (const layerCache of layerCaches) {
+      let file = `${this.tmpDir}/${layerCache}`;
+
+      try {
+        const stats = statSync(file);
+        const mtime = stats.mtime.getTime(); // last modified time in ms
+        const age = (now - mtime) / (this.cacheExpiry * 1000) - (now - mtime);
+        if (age > 1) {
+          unlinkSync(file);
+          count++;
+        }
+      } catch (err: any) {
+        console.error(err.message);
+      }
+    }
+    this.log(
+      `${this.colors.YELLOW}%d${this.colors.RESET} total cache layer(s) cleared...`,
+      count,
+    );
   }
 }
 
