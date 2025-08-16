@@ -3,22 +3,18 @@
   "compilerOptions": {
     // File Layout
     "rootDir": "./src",
-    "outDir": "./lib/esm",
+    "outDir": "./lib/cjs",
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
-    // "module": "nodenext",
-    // "target": "esnext",
+    "moduleResolution": "Node",
+    "module": "CommonJS",
+    "target": "ES2020",
     // "types": [],
     // For nodejs:
     // "lib": ["esnext"],
-    // "types": ["node"],
+    "types": ["node"],
     // and npm install -D @types/node
-
-    "target": "ES2020",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "esModuleInterop": true,
 
     // Other Outputs
     "sourceMap": true,
@@ -47,4 +43,8 @@
   },
   "exclude": ["node_modules", "lib", "test"],
   // "exclude": ["node_modules", "lib", "test", "**/*.test.ts"],
+  // "ts-node": {
+  //   "esm": true,
+  //   "experimentalSpecifierResolution": "node"
+  // }
 }

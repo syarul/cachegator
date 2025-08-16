@@ -1,13 +1,16 @@
 {
   "type": "module",
   "name": "cachegator",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "a split-able caching aggregation handler",
-  "main": "lib/index.js",
+  "main": "lib/cjs/index.cjs",
+  "module": "lib/esm/index.js",
   "scripts": {
     "test": "npx tsx test/index.test.ts",
     "lint": "prettier --write **/*.ts  --ignore-path ''",
-    "build": "tsc -p tsconfig.json",
+    "build:esm": "tsc -p tsconfig.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build": "npm run build:esm && npm run build:cjs",
     "start": "node lib/index.js",
     "dev": "ts-node src/index.ts",
     "watch": "ts-node-dev --respawn --transpile-only src/index.ts"
@@ -41,5 +44,11 @@
   },
   "dependencies": {
     "redis": "^5.8.0"
+  },
+  "exports": {
+    ".": {
+      "require": "./lib/cjs/index.cjs",
+      "import": "./lib/esm/index.js"
+    }
   }
 }

@@ -11,8 +11,8 @@ import {
   unlinkSync,
   writeFileSync,
 } from "fs";
-import readline from "readline";
-import crypto from "crypto";
+import * as readline from "readline";
+import * as crypto from "crypto";
 
 class CacheGator {
   private cacheType: "redis" | "memory";

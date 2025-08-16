@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import "dotenv/config";
 import "./sampleModel";
-import Ctor, { CacheGator } from "../src";
+import Ctor, { CacheGator } from "../lib/esm";
 const Model = mongoose.model("Model");
 
 const ctor: CacheGator = new Ctor({
@@ -512,7 +512,7 @@ async function getData(params: any) {
         $limit: limit,
       },
     ]);
-    console.log(result);
+    return result;
   } catch (e) {
     console.error(e);
   }
