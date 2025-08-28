@@ -545,6 +545,7 @@ class CacheGator {
   clearMemoryCache() {
     const files = readdirSync(this.tmpDir);
     const filters = files.filter((f) => /\.remove.tmp$/.test(f));
+    const now = Date.now();
     for (const filter of filters) {
       try {
         let file = filter.slice(0, -11);
@@ -552,9 +553,14 @@ class CacheGator {
           `${this.tmpDir}/${file}.tmp`,
           `${this.tmpDir}/${file}.remove.tmp`,
         ];
-        for (const file of files) {
-          if (existsSync(file)) {
-            unlinkSync(file);
+        const stats = statSync(files[0] as string);
+        const mtime = stats.mtime.getTime(); // last modified time in ms
+        const age = (now - mtime) / (this.cacheExpiry * 1000) - (now - mtime);
+        if (age > 1) {
+          for (const file of files) {
+            if (existsSync(file)) {
+              unlinkSync(file);
+            }
           }
         }
       } catch (err: any) {
