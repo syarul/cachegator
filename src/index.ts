@@ -488,7 +488,7 @@ class CacheGator {
         rl.close();
       }
 
-      if (entries.length === 0) break;
+      // if (entries.length === 0) break;
       start = entries[entries.length - 1]?.id;
 
       for await (const { message } of entries) {
