@@ -455,6 +455,9 @@ class CacheGator {
     } else {
       // clear layer cache first
       this.clearLayerMemoryCache();
+      if (!this.persistentCaching) {
+        this.clearMemoryCache();
+      }
     }
     const combined = new Map<string, any>();
     let results: any[] = [];
@@ -530,10 +533,8 @@ class CacheGator {
         ignoreFields,
       });
     }
-    if (this.cacheType === "memory" && !this.persistentCaching) {
-      this.clearMemoryCache();
-    } else {
-      this.cacheType === "redis" && this.closeRedisClient();
+    if (this.cacheType === "redis") {
+      this.closeRedisClient();
     }
     this.log(
       `${this.colors.GREEN}%d${this.colors.RESET} combined entries processed...`,
