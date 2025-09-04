@@ -41,6 +41,7 @@ declare class CacheGator {
     }): Promise<any[]>;
     clearMemoryCache(): void;
     private clearLayerMemoryCache;
+    private isExpired;
 }
 export default CacheGator;
 export type { CacheGator };

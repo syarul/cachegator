@@ -546,20 +546,19 @@ class CacheGator {
     const files = readdirSync(this.tmpDir);
     const filters = files.filter((f) => /\.remove.tmp$/.test(f));
     const now = Date.now();
+    let count = 0;
     for (const filter of filters) {
       try {
-        let file = filter.slice(0, -11);
+        const fileName = filter.slice(0, -11);
         const files = [
-          `${this.tmpDir}/${file}.tmp`,
-          `${this.tmpDir}/${file}.remove.tmp`,
+          `${this.tmpDir}/${fileName}.tmp`,
+          `${this.tmpDir}/${fileName}.remove.tmp`,
         ];
-        const stats = statSync(files[0] as string);
-        const mtime = stats.mtime.getTime(); // last modified time in ms
-        const age = (now - mtime) / (this.cacheExpiry * 1000) - (now - mtime);
-        if (age > 1) {
+        if (this.isExpired(now, files[0] as string)) {
           for (const file of files) {
             if (existsSync(file)) {
               unlinkSync(file);
+              count++;
             }
           }
         }
@@ -567,6 +566,10 @@ class CacheGator {
         console.error(err.message);
       }
     }
+    this.log(
+      `${this.colors.YELLOW}%d${this.colors.RESET} total cache(s) cleared...`,
+      count,
+    );
   }
 
   private clearLayerMemoryCache() {
@@ -576,15 +579,13 @@ class CacheGator {
     const now = Date.now();
     let count = 0;
     for (const layerCache of layerCaches) {
-      let file = `${this.tmpDir}/${layerCache}`;
-
+      const file = `${this.tmpDir}/${layerCache}`;
       try {
-        const stats = statSync(file);
-        const mtime = stats.mtime.getTime(); // last modified time in ms
-        const age = (now - mtime) / (this.cacheExpiry * 1000) - (now - mtime);
-        if (age > 1) {
-          unlinkSync(file);
-          count++;
+        if (this.isExpired(now, file)) {
+          if (existsSync(file)) {
+            unlinkSync(file);
+            count++;
+          }
         }
       } catch (err: any) {
         console.error(err.message);
@@ -594,6 +595,12 @@ class CacheGator {
       `${this.colors.YELLOW}%d${this.colors.RESET} total cache layer(s) cleared...`,
       count,
     );
+  }
+
+  private isExpired(now: any, file: string) {
+    const stats = statSync(file);
+    const mtime = stats.mtime.getTime(); // last modified time in ms
+    return now - mtime > this.cacheExpiry * 1000;
   }
 }
 
